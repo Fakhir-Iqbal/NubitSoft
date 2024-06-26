@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Image,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { Link } from "expo-router";
 import API from "@/constants/Api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,7 +7,7 @@ import Loader from "@/components/Loader";
 
 export default function MarkAttendance() {
   const [user, setUser] = useState<any>(null);
-  const [load, setLoad] = useState<any>(true);
+  const [load, setLoad] = useState<any>(false);
   const [sendto, setSendto] = useState<any>("");
 
   const getData = async (value: any) => {
@@ -25,18 +20,18 @@ export default function MarkAttendance() {
   const checkDetails = async () => {
     if (!user) return;
     try {
+      setLoad(true);
       const employeeID = JSON.parse(user).employeeid;
       const res = await API({}).getAttendaceDetails(employeeID);
-      if (res?.data?.message === "timein") {
-        setSendto("TimeIn");
-      } else if (res?.data?.message === "timeout") {
-        setSendto("TimeOut");
-      } else if (res?.data?.message === "Already Marked") {
-        setSendto("Already Marked");
-      }
+      const result = res?.data.message;
+      console.log(result);
+      if (result === "timein") setSendto("TimeIn");
+      if (result === "timeout") setSendto("TimeOut");
+      if (result === "Already Marked") setSendto("Already Marked");
+
       setLoad(false);
     } catch (err) {
-      console.log(err);
+      setLoad(false);
     }
   };
 

@@ -79,7 +79,6 @@ export const AuthProvider = ({ children }: any) => {
 
       if (token) {
         console.log("successfully logged in");
-        console.log("token", token);
         const res = await authenticateMe(token);
 
         // Save token and user to AsyncStorage
@@ -93,6 +92,7 @@ export const AuthProvider = ({ children }: any) => {
           user: res,
         });
       }
+      return userData;
     } catch (error) {
       console.error("Login error:", error);
       throw error;

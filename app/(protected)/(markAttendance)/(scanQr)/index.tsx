@@ -25,7 +25,6 @@ export default function App() {
   const [sendto, setSendto] = useState<any>("");
   const [allAttendanceKey, setAllAttendanceKey] = useState<any>(null);
 
-
   const router = useRouter();
   const getData = async (value: any) => {
     try {
@@ -175,6 +174,7 @@ export default function App() {
 
   const handleBarCodeScanned = ({ type, data }: any) => {
     onSuccess("MARKATTENDANCENUBITHOME");
+    setScanned(true);
   };
 
   const renderCamera = () => {

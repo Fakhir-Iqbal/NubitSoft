@@ -1,96 +1,118 @@
-import React, { useState } from "react";
-import {
-  Text,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  View,
-} from "react-native";
-import { useAuth } from "./AuthContext";
+import React, { createContext, useContext, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Alert } from "react-native";
+// import { Role } from "@/constants/Api"; // Ensure you have Role defined properly
 
-const Page = () => {
-  const [username, setUsername] = useState("Gohar");
-  const [password, setPassword] = useState("123");
+const signIn = async ({ username, password }: any) => {
+  try {
+    const res = await axios.post(
+      "https://webapi.nubitsoft.com/api/Authenticate/Login",
+      {
+        Username: username,
+        Password: password,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Error signing in:", error);
+    Alert.alert("login error", "Wrong username or password!");
+    throw error;
+  }
+};
 
-  const { onLogin } = useAuth();
+//  this function is getting user data by using token which is provided by login api...
+const authenticateMe = async (token: any) => {
+  try {
+    const res = await axios.get(
+      "https://webapi.nubitsoft.com/api/Authenticate/Me",
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const result = await res.data;
+    return result;
+  } catch (error) {
+    console.error("Error authenticate:", error);
+    Alert.alert("Failed to load user data");
+  }
+};
 
-  const onSignInPress = async () => {
-    onLogin!(username, password);
+interface AuthProps {
+  authState: {
+    authenticated: boolean | null;
+    user: object | null;
+  };
+  onLogin: (username: string, password: string) => void;
+  onLogout: () => void;
+}
+
+const AuthContext = createContext<Partial<AuthProps>>({});
+
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+export const AuthProvider = ({ children }: any) => {
+  const [authState, setAuthState] = useState<{
+    authenticated: boolean | null;
+    user: object | null;
+  }>({
+    authenticated: null,
+    user: null,
+  });
+
+  const onLogin = async (username: string, password: any) => {
+    try {
+      const userData = await signIn({ username, password });
+      // Assuming your API response structure includes a token and status
+      const { token, expiration, status } = userData;
+
+      if (token) {
+        console.log("successfully logged in");
+        const res = await authenticateMe(token);
+
+        // Save token and user to AsyncStorage
+        await AsyncStorage.setItem("token", token);
+        await AsyncStorage.setItem("expiration", expiration);
+        await AsyncStorage.setItem("user", JSON.stringify(res));
+
+        // Update authState with user details
+        setAuthState({
+          authenticated: true,
+          user: res,
+        });
+      }
+      return userData;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  };
+
+  const onLogout = async () => {
+    // Clear AsyncStorage and reset authState
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("expiration");
+    await AsyncStorage.removeItem("user");
+    setAuthState({
+      authenticated: false,
+      user: null,
+    });
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      {/* <Text style={styles.header}>My Epic App</Text> */}
-      <View style={styles.header}>
-        <Image
-          source={{
-            uri: "https://s.mustakbil.com/employers/d14def2517b8427cacd10fd53c247e21.jpg",
-          }}
-          style={styles.image}
-        />
-      </View>
-
-      <TextInput
-        autoCapitalize="none"
-        placeholder="admin"
-        value={username}
-        onChangeText={setUsername}
-        style={styles.inputField}
-      />
-      <TextInput
-        placeholder="password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={styles.inputField}
-      />
-
-      <TouchableOpacity onPress={onSignInPress} style={styles.button}>
-        <Text style={{ color: "#fff" }}>Sign in</Text>
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+    <AuthContext.Provider value={{ authState, onLogin, onLogout }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#fff",
-    paddingHorizontal: "20%",
-    justifyContent: "center",
-  },
-  header: {
-    fontSize: 30,
-    textAlign: "center",
-    marginBottom: 40,
-    height: 150,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
-  inputField: {
-    marginVertical: 4,
-    height: 50,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    padding: 10,
-  },
-  button: {
-    marginVertical: 15,
-    alignItems: "center",
-    backgroundColor: "#175E96",
-    padding: 12,
-    borderRadius: 4,
-  },
-});
-export default Page;
