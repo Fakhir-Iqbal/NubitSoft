@@ -1,37 +1,50 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { Stack, useRouter, useSegments } from "expo-router";
+import { AuthProvider, useAuth } from "./AuthContext";
+import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+const StackLayout = () => {
+  const { authState } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
+    const hideSplash = async () => {
+      if (loaded) {
+        await SplashScreen.hideAsync();
+      }
+    };
+    hideSplash();
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
+  useEffect(() => {
+    const inAuthGroup = segments[0] === "(protected)";
+
+    if (!authState?.authenticated) {
+      router.replace("/");
+    } else if (authState?.authenticated === true) {
+      router.replace("/(protected)");
+    }
+  }, [authState]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(protected)" options={{ headerShown: false }} />
+    </Stack>
   );
-}
+};
+
+const RootLayoutNav = () => {
+  return (
+    <AuthProvider>
+      <StackLayout />
+    </AuthProvider>
+  );
+};
+
+export default RootLayoutNav;
